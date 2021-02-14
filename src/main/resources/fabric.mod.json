@@ -1,29 +1,28 @@
 {
   "schemaVersion": 1,
-  "id": "modid",
-  "version": "${version}",
+  "id": "survivalspectator",
+  "version": "1.0.0",
 
-  "name": "Example Mod",
-  "description": "This is an example description! Tell everyone what your mod is about!",
+  "name": "Survival Spectator",
+  "description": "Spectating in survival, without allowing teleportation.",
   "authors": [
-    "Me!"
+    "NorthWestWind"
   ],
   "contact": {
-    "homepage": "https://fabricmc.net/",
-    "sources": "https://github.com/FabricMC/fabric-example-mod"
+    "homepage": "https://github.com/North-West-Wind/FabricSurvivalSpectator/releases/latest",
+    "sources": "https://github.com/North-West-Wind/FabricSurvivalSpectator"
   },
 
   "license": "CC0-1.0",
-  "icon": "assets/modid/icon.png",
+  "icon": "assets/survivalspectator/icon.png",
 
   "environment": "*",
   "entrypoints": {
     "main": [
-      "net.fabricmc.example.ExampleMod"
+      "ml.northwestwind.survivalspectator.SurvivalSpectator"
     ]
   },
   "mixins": [
-    "modid.mixins.json"
   ],
 
   "depends": {
