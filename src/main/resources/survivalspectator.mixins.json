@@ -4,6 +4,7 @@
   "package": "ml.northwestwind.survivalspectator.mixin",
   "compatibilityLevel": "JAVA_8",
   "mixins": [
+    "EntityMixin"
   ],
   "client": [
   ],

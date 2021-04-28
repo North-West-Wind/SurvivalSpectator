@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "id": "survivalspectator",
-  "version": "1.0.0",
+  "version": "1.0.1",
 
   "name": "Survival Spectator",
   "description": "Spectating in survival, without allowing teleportation.",
@@ -13,7 +13,7 @@
     "sources": "https://github.com/North-West-Wind/FabricSurvivalSpectator"
   },
 
-  "license": "CC0-1.0",
+  "license": "GPLv3",
   "icon": "assets/survivalspectator/icon.png",
 
   "environment": "*",
@@ -23,6 +23,7 @@
     ]
   },
   "mixins": [
+    "survivalspectator.mixins.json"
   ],
 
   "depends": {
