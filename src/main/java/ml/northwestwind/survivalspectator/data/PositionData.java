@@ -1,23 +1,28 @@
 package ml.northwestwind.survivalspectator.data;
 
 import com.google.common.collect.Maps;
+import com.mojang.authlib.GameProfile;
+import ml.northwestwind.survivalspectator.entity.FakePlayerEntity;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
+import net.minecraft.server.network.ServerPlayerEntity;
+import net.minecraft.server.network.ServerPlayerInteractionManager;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.Pair;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.util.registry.Registry;
 import net.minecraft.util.registry.RegistryKey;
+import net.minecraft.world.GameMode;
 import net.minecraft.world.PersistentState;
 import net.minecraft.world.World;
 
-import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 
 public class PositionData extends PersistentState {
-    public final HashMap<UUID, Pair<Vec3d, RegistryKey<World>>> positions = Maps.newHashMap();
+    private final Map<UUID, Pair<Vec3d, RegistryKey<World>>> positions = Maps.newHashMap();
+    private final Map<UUID, UUID> playerPlaceholders = Maps.newHashMap();
     public static final String NAME = "survivalspectator";
 
     public PositionData() {
@@ -41,6 +46,15 @@ public class PositionData extends PersistentState {
                 i++;
             }
         }
+        list = (ListTag) tag.get("fakes");
+        if (list != null) {
+            int i = 0;
+            while (!list.getCompound(i).isEmpty()) {
+                CompoundTag compound = list.getCompound(i);
+                playerPlaceholders.put(compound.getUuid("uuid"), compound.getUuid("fake"));
+                i++;
+            }
+        }
     }
 
     @Override
@@ -55,9 +69,53 @@ public class PositionData extends PersistentState {
             compound.putDouble("y", pos.y);
             compound.putDouble("z", pos.z);
             compound.putString("dimension", entry.getValue().getRight().getValue().toString());
-            list.add(i, compound);
+            list.add(i++, compound);
         }
         tag.put("spectators", list);
+        ListTag fakes = new ListTag();
+        i = 0;
+        for (Map.Entry<UUID, UUID> entry : playerPlaceholders.entrySet()) {
+            CompoundTag compound = new CompoundTag();
+            compound.putUuid("uuid", entry.getKey());
+            compound.putUuid("fake", entry.getValue());
+            fakes.add(i++, compound);
+        }
+        tag.put("fakes", fakes);
         return tag;
+    }
+
+    public boolean contains(UUID uuid) {
+        return positions.containsKey(uuid) && playerPlaceholders.containsKey(uuid);
+    }
+
+    public void toSpectator(ServerPlayerEntity player) {
+        positions.put(player.getUuid(), new Pair<>(player.getPos(), player.world.getRegistryKey()));
+        FakePlayerEntity fake = FakePlayerEntity.createFake(player.getEntityName(), player.getServer(), player.getX(), player.getY(), player.getZ(), player.yaw, player.pitch, player.world.getRegistryKey(), GameMode.SURVIVAL);
+        if (fake != null) playerPlaceholders.put(player.getUuid(), fake.getUuid());
+    }
+
+    public void toSurvival(ServerPlayerEntity player) {
+        Vec3d pos = positions.get(player.getUuid()).getLeft();
+        RegistryKey<World> dimension = positions.get(player.getUuid()).getRight();
+        ServerPlayerEntity fake;
+        if (!player.world.getRegistryKey().equals(dimension)) {
+            ServerWorld world = ((ServerWorld) player.world).getServer().getWorld(dimension);
+            if (world == null) return;
+            fake = (ServerPlayerEntity) world.getEntity(playerPlaceholders.get(player.getUuid()));
+            player.moveToWorld(world);
+        } else {
+            fake = (ServerPlayerEntity) player.getServerWorld().getEntity(playerPlaceholders.get(player.getUuid()));
+            player.teleport(pos.x, pos.y, pos.z);
+        }
+        positions.remove(player.getUuid());
+
+        playerPlaceholders.remove(player.getUuid());
+        if (fake == null) return;
+        if (fake.removed) player.kill();
+        fake.kill();
+    }
+
+    public Vec3d getPlayerPos(UUID uuid) {
+        return positions.get(uuid).getLeft();
     }
 }
