@@ -12,17 +12,15 @@ import net.minecraft.network.NetworkSide;
 import net.minecraft.network.packet.s2c.play.EntityPositionS2CPacket;
 import net.minecraft.network.packet.s2c.play.EntitySetHeadYawS2CPacket;
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.server.ServerTask;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.network.ServerPlayerInteractionManager;
 import net.minecraft.server.world.ServerWorld;
-import net.minecraft.text.LiteralText;
-import net.minecraft.text.Text;
 import net.minecraft.util.registry.RegistryKey;
 import net.minecraft.world.GameMode;
 import net.minecraft.world.World;
 
 import java.util.UUID;
+import java.util.function.Consumer;
 
 // Thank you Carpet
 @SuppressWarnings("EntityConstructor")
@@ -34,32 +32,31 @@ public class FakePlayerEntity extends ServerPlayerEntity
     public static FakePlayerEntity createFake(String username, MinecraftServer server, double d0, double d1, double d2, double yaw, double pitch, RegistryKey<World> dimensionId, GameMode gamemode)
     {
         ServerWorld worldIn = server.getWorld(dimensionId);
-        ServerPlayerInteractionManager interactionManagerIn = new ServerPlayerInteractionManager(worldIn);
         GameProfile profile = server.getUserCache().findByName(username);
         if (profile == null) return null;
-        GameProfile gameprofile = new GameProfile(UUID.randomUUID(), username);
+        final GameProfile[] gameprofile = {new GameProfile(UUID.randomUUID(), username)};
         if (profile.getProperties().containsKey("textures")) {
-            gameprofile.getProperties().put("textures", (Property) profile.getProperties().get("textures"));
-            gameprofile = SkullBlockEntity.loadProperties(gameprofile);
+            gameprofile[0].getProperties().put("textures", (Property) profile.getProperties().get("textures"));
+            SkullBlockEntity.loadProperties(gameprofile[0], pro -> gameprofile[0] = pro);
         }
-        FakePlayerEntity instance = new FakePlayerEntity(server, worldIn, gameprofile, interactionManagerIn, false);
+        FakePlayerEntity instance = new FakePlayerEntity(server, worldIn, gameprofile[0], false);
         instance.fixStartingPosition = () -> instance.refreshPositionAndAngles(d0, d1, d2, (float) yaw, (float) pitch);
         server.getPlayerManager().onPlayerConnect(new FakeNetworkManager(NetworkSide.SERVERBOUND), instance);
         instance.teleport(worldIn, d0, d1, d2, (float)yaw, (float)pitch);
         instance.setHealth(20.0F);
-        instance.removed = false;
+        instance.unsetRemoved();
         instance.stepHeight = 0.6F;
-        interactionManagerIn.setGameMode(gamemode);
+        instance.interactionManager.changeGameMode(gamemode);
         server.getPlayerManager().sendToDimension(new EntitySetHeadYawS2CPacket(instance, (byte) (instance.headYaw * 256 / 360)), dimensionId);//instance.dimension);
         server.getPlayerManager().sendToDimension(new EntityPositionS2CPacket(instance), dimensionId);//instance.dimension);
-        instance.getServerWorld().getChunkManager().updateCameraPosition(instance);
+        instance.getServerWorld().getChunkManager().updatePosition(instance);
         instance.dataTracker.set(PLAYER_MODEL_PARTS, (byte) 0x7f); // show all model layers (incl. capes)
         return instance;
     }
 
-    private FakePlayerEntity(MinecraftServer server, ServerWorld worldIn, GameProfile profile, ServerPlayerInteractionManager interactionManagerIn, boolean shadow)
+    private FakePlayerEntity(MinecraftServer server, ServerWorld worldIn, GameProfile profile, boolean shadow)
     {
-        super(server, worldIn, profile, interactionManagerIn);
+        super(server, worldIn, profile);
         isAShadow = shadow;
     }
 
@@ -75,7 +72,7 @@ public class FakePlayerEntity extends ServerPlayerEntity
         if (this.getServer().getTicks() % 10 == 0)
         {
             this.networkHandler.syncWithPlayerPosition();
-            this.getServerWorld().getChunkManager().updateCameraPosition(this);
+            this.getServerWorld().getChunkManager().updatePosition(this);
         }
         super.tick();
         this.playerTick();
@@ -127,7 +124,7 @@ public class FakePlayerEntity extends ServerPlayerEntity
     public void kill()
     {
         shakeOff();
-        remove();
+        remove(RemovalReason.DISCARDED);
     }
 
     @Override

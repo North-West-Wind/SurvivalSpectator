@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "id": "survivalspectator",
-  "version": "1.0.2",
+  "version": "2.0.0",
 
   "name": "Survival Spectator",
   "description": "Spectating in survival, without allowing teleportation.",
@@ -29,7 +29,7 @@
   "depends": {
     "fabricloader": ">=0.7.4",
     "fabric": "*",
-    "minecraft": "1.16.x"
+    "minecraft": "1.17.x"
   },
   "suggests": {
   }

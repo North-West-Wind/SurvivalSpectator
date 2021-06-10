@@ -23,9 +23,9 @@ public abstract class EntityMixin {
 
     @Shadow public abstract boolean isSpectator();
 
-    @Shadow public float yaw;
+    @Shadow private float yaw;
 
-    @Shadow public float pitch;
+    @Shadow private float pitch;
 
     @Inject(at = @At("HEAD"), method = "getTeleportTarget", cancellable = true)
     public void getTeleportTarget(ServerWorld destination, CallbackInfoReturnable<TeleportTarget> cri) {

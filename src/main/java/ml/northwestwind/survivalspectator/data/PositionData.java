@@ -2,8 +2,10 @@ package ml.northwestwind.survivalspectator.data;
 
 import com.google.common.collect.Maps;
 import ml.northwestwind.survivalspectator.entity.FakePlayerEntity;
-import net.minecraft.nbt.CompoundTag;
-import net.minecraft.nbt.ListTag;
+import net.minecraft.nbt.NbtCompound;
+import net.minecraft.nbt.NbtList;
+import net.minecraft.nbt.NbtCompound;
+import net.minecraft.nbt.NbtList;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.util.Identifier;
@@ -18,6 +20,7 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.Map;
 import java.util.UUID;
+import java.util.function.Function;
 
 public class PositionData extends PersistentState {
     private final Map<UUID, Pair<Vec3d, RegistryKey<World>>> positions = Maps.newHashMap();
@@ -25,43 +28,42 @@ public class PositionData extends PersistentState {
     public static final String NAME = "survivalspectator";
 
     public PositionData() {
-        super(NAME);
     }
 
     public static PositionData get(ServerWorld world) {
-        return world.getServer().getOverworld().getPersistentStateManager().getOrCreate(PositionData::new, NAME);
+        return world.getServer().getOverworld().getPersistentStateManager().getOrCreate(nbtCompound -> new PositionData().read(nbtCompound), PositionData::new, NAME);
     }
 
-    @Override
-    public void fromTag(CompoundTag tag) {
-        ListTag list = (ListTag) tag.get("spectators");
+    public PositionData read(NbtCompound tag) {
+        NbtList list = (NbtList) tag.get("spectators");
         if (list != null) {
             int i = 0;
             while (!list.getCompound(i).isEmpty()) {
-                CompoundTag compound = list.getCompound(i);
+                NbtCompound compound = list.getCompound(i);
                 Vec3d pos = new Vec3d(compound.getDouble("x"), compound.getDouble("y"), compound.getDouble("z"));
-                RegistryKey<World> dimension = RegistryKey.of(Registry.DIMENSION, new Identifier(compound.getString("dimension")));
+                RegistryKey<World> dimension = RegistryKey.of(Registry.WORLD_KEY, new Identifier(compound.getString("dimension")));
                 positions.put(compound.getUuid("uuid"), new Pair<>(pos, dimension));
                 i++;
             }
         }
-        list = (ListTag) tag.get("fakes");
+        list = (NbtList) tag.get("fakes");
         if (list != null) {
             int i = 0;
             while (!list.getCompound(i).isEmpty()) {
-                CompoundTag compound = list.getCompound(i);
+                NbtCompound compound = list.getCompound(i);
                 playerPlaceholders.put(compound.getUuid("uuid"), compound.getUuid("fake"));
                 i++;
             }
         }
+        return this;
     }
 
     @Override
-    public CompoundTag toTag(CompoundTag tag) {
-        ListTag list = new ListTag();
+    public NbtCompound writeNbt(NbtCompound tag) {
+        NbtList list = new NbtList();
         int i = 0;
         for (Map.Entry<UUID, Pair<Vec3d, RegistryKey<World>>> entry : positions.entrySet()) {
-            CompoundTag compound = new CompoundTag();
+            NbtCompound compound = new NbtCompound();
             compound.putUuid("uuid", entry.getKey());
             Vec3d pos = entry.getValue().getLeft();
             compound.putDouble("x", pos.x);
@@ -71,10 +73,10 @@ public class PositionData extends PersistentState {
             list.add(i++, compound);
         }
         tag.put("spectators", list);
-        ListTag fakes = new ListTag();
+        NbtList fakes = new NbtList();
         i = 0;
         for (Map.Entry<UUID, UUID> entry : playerPlaceholders.entrySet()) {
-            CompoundTag compound = new CompoundTag();
+            NbtCompound compound = new NbtCompound();
             compound.putUuid("uuid", entry.getKey());
             compound.putUuid("fake", entry.getValue());
             fakes.add(i++, compound);
@@ -89,9 +91,9 @@ public class PositionData extends PersistentState {
 
     public void toSpectator(ServerPlayerEntity player) {
         positions.put(player.getUuid(), new Pair<>(player.getPos(), player.world.getRegistryKey()));
-        FakePlayerEntity fake = FakePlayerEntity.createFake(player.getEntityName(), player.getServer(), player.getX(), player.getY(), player.getZ(), player.yaw, player.pitch, player.world.getRegistryKey(), GameMode.SURVIVAL);
+        FakePlayerEntity fake = FakePlayerEntity.createFake(player.getEntityName(), player.getServer(), player.getX(), player.getY(), player.getZ(), player.getYaw(), player.getPitch(), player.world.getRegistryKey(), GameMode.SURVIVAL);
         if (fake != null) playerPlaceholders.put(player.getUuid(), fake.getUuid());
-        player.setGameMode(GameMode.SPECTATOR);
+        player.interactionManager.changeGameMode(GameMode.SPECTATOR);
     }
 
     public void toSurvival(ServerPlayerEntity player) {
@@ -109,9 +111,9 @@ public class PositionData extends PersistentState {
         }
         positions.remove(player.getUuid());
         playerPlaceholders.remove(player.getUuid());
-        player.setGameMode(GameMode.SURVIVAL);
+        player.interactionManager.changeGameMode(GameMode.SURVIVAL);
         if (fake == null) return;
-        if (fake.removed) player.kill();
+        if (fake.isRemoved()) player.kill();
         fake.kill();
     }
 
