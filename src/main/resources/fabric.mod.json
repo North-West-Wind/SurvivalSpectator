@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "id": "survivalspectator",
-  "version": "1.0.1",
+  "version": "1.0.2",
 
   "name": "Survival Spectator",
   "description": "Spectating in survival, without allowing teleportation.",

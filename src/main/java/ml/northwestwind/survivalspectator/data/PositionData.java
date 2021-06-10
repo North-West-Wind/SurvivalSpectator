@@ -1,12 +1,10 @@
 package ml.northwestwind.survivalspectator.data;
 
 import com.google.common.collect.Maps;
-import com.mojang.authlib.GameProfile;
 import ml.northwestwind.survivalspectator.entity.FakePlayerEntity;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.server.network.ServerPlayerInteractionManager;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.Pair;
@@ -16,6 +14,7 @@ import net.minecraft.util.registry.RegistryKey;
 import net.minecraft.world.GameMode;
 import net.minecraft.world.PersistentState;
 import net.minecraft.world.World;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.Map;
 import java.util.UUID;
@@ -117,5 +116,34 @@ public class PositionData extends PersistentState {
 
     public Vec3d getPlayerPos(UUID uuid) {
         return positions.get(uuid).getLeft();
+    }
+
+    @Nullable
+    public UUID getPlayerByFake(UUID uuid) {
+        return playerPlaceholders.entrySet().stream().filter(entry -> entry.getValue().equals(uuid)).findFirst().orElseGet(() -> new NullEntry<>(uuid)).getKey();
+    }
+
+    private static class NullEntry<K, V> implements Map.Entry<K, V> {
+        private V value;
+
+        public NullEntry(V value) {
+            this.value = value;
+        }
+
+        @Override
+        public K getKey() {
+            return null;
+        }
+
+        @Override
+        public V getValue() {
+            return value;
+        }
+
+        @Override
+        public V setValue(V value) {
+            this.value = value;
+            return value;
+        }
     }
 }
