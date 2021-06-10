@@ -91,6 +91,7 @@ public class PositionData extends PersistentState {
         positions.put(player.getUuid(), new Pair<>(player.getPos(), player.world.getRegistryKey()));
         FakePlayerEntity fake = FakePlayerEntity.createFake(player.getEntityName(), player.getServer(), player.getX(), player.getY(), player.getZ(), player.yaw, player.pitch, player.world.getRegistryKey(), GameMode.SURVIVAL);
         if (fake != null) playerPlaceholders.put(player.getUuid(), fake.getUuid());
+        player.setGameMode(GameMode.SPECTATOR);
     }
 
     public void toSurvival(ServerPlayerEntity player) {
@@ -107,8 +108,8 @@ public class PositionData extends PersistentState {
             player.teleport(pos.x, pos.y, pos.z);
         }
         positions.remove(player.getUuid());
-
         playerPlaceholders.remove(player.getUuid());
+        player.setGameMode(GameMode.SURVIVAL);
         if (fake == null) return;
         if (fake.removed) player.kill();
         fake.kill();

@@ -98,7 +98,10 @@ public class FakePlayerEntity extends ServerPlayerEntity
             UUID uuid = data.getPlayerByFake(this.getUuid());
             if (uuid != null) {
                 Entity entity = this.getServerWorld().getEntity(uuid);
-                if (entity instanceof ServerPlayerEntity) data.toSurvival((ServerPlayerEntity) entity);
+                if (entity instanceof ServerPlayerEntity) {
+                    data.toSurvival((ServerPlayerEntity) entity);
+                    entity.damage(source, amount);
+                }
             }
         }
         return sup;
@@ -123,13 +126,8 @@ public class FakePlayerEntity extends ServerPlayerEntity
     @Override
     public void kill()
     {
-        kill(new LiteralText("Killed"));
-    }
-
-    public void kill(Text reason)
-    {
         shakeOff();
-        this.server.send(new ServerTask(this.server.getTicks(), () -> this.networkHandler.onDisconnected(reason)));
+        remove();
     }
 
     @Override

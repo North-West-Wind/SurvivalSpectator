@@ -22,15 +22,9 @@ public class SurvivalSpectator implements ModInitializer {
 		PositionData data = PositionData.get((ServerWorld) entity.world);
 		ServerPlayerEntity player = (ServerPlayerEntity) entity;
 		boolean spectating = player.isSpectator();
-		if (spectating) {
-			player.setGameMode(GameMode.SURVIVAL);
-			data.toSurvival(player);
-			data.markDirty();
-		} else {
-			player.setGameMode(GameMode.SPECTATOR);
-			data.toSpectator(player);
-			data.markDirty();
-		}
+		if (spectating) data.toSurvival(player);
+		else data.toSpectator(player);
+		data.markDirty();
 		return 1;
 	}
 }
