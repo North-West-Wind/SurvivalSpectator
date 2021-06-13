@@ -39,7 +39,8 @@ public class FakePlayerEntity extends ServerPlayerEntity
         if (profile == null) return null;
         GameProfile gameprofile = new GameProfile(UUID.randomUUID(), username);
         if (profile.getProperties().containsKey("textures")) {
-            gameprofile.getProperties().put("textures", (Property) profile.getProperties().get("textures"));
+            for (Property property : profile.getProperties().get("textures"))
+                    gameprofile.getProperties().put("textures", property);
             gameprofile = SkullBlockEntity.loadProperties(gameprofile);
         }
         FakePlayerEntity instance = new FakePlayerEntity(server, worldIn, gameprofile, interactionManagerIn, false);

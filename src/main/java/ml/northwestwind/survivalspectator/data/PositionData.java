@@ -88,13 +88,14 @@ public class PositionData extends PersistentState {
     }
 
     public void toSpectator(ServerPlayerEntity player) {
+        player.setGameMode(GameMode.SPECTATOR);
         positions.put(player.getUuid(), new Pair<>(player.getPos(), player.world.getRegistryKey()));
         FakePlayerEntity fake = FakePlayerEntity.createFake(player.getEntityName(), player.getServer(), player.getX(), player.getY(), player.getZ(), player.yaw, player.pitch, player.world.getRegistryKey(), GameMode.SURVIVAL);
         if (fake != null) playerPlaceholders.put(player.getUuid(), fake.getUuid());
-        player.setGameMode(GameMode.SPECTATOR);
     }
 
     public void toSurvival(ServerPlayerEntity player) {
+        player.setGameMode(GameMode.SURVIVAL);
         Vec3d pos = positions.get(player.getUuid()).getLeft();
         RegistryKey<World> dimension = positions.get(player.getUuid()).getRight();
         ServerPlayerEntity fake;
@@ -109,7 +110,6 @@ public class PositionData extends PersistentState {
         }
         positions.remove(player.getUuid());
         playerPlaceholders.remove(player.getUuid());
-        player.setGameMode(GameMode.SURVIVAL);
         if (fake == null) return;
         if (fake.removed) player.kill();
         fake.kill();
