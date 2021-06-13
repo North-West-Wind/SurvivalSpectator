@@ -72,6 +72,9 @@ public class FakePlayerEntity extends ServerPlayerEntity
         {
             this.networkHandler.syncWithPlayerPosition();
             this.getServerWorld().getChunkManager().updatePosition(this);
+            PositionData data = PositionData.get(this.getServerWorld());
+            UUID uuid = data.getPlayerByFake(this.getUuid());
+            if (uuid == null && !this.isRemoved()) this.remove(RemovalReason.DISCARDED);
         }
         super.tick();
         this.playerTick();
