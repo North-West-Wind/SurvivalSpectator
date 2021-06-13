@@ -4,8 +4,6 @@ import com.google.common.collect.Maps;
 import ml.northwestwind.survivalspectator.entity.FakePlayerEntity;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.nbt.NbtList;
-import net.minecraft.nbt.NbtCompound;
-import net.minecraft.nbt.NbtList;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.util.Identifier;
@@ -20,7 +18,6 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.Map;
 import java.util.UUID;
-import java.util.function.Function;
 
 public class PositionData extends PersistentState {
     private final Map<UUID, Pair<Vec3d, RegistryKey<World>>> positions = Maps.newHashMap();
@@ -90,13 +87,14 @@ public class PositionData extends PersistentState {
     }
 
     public void toSpectator(ServerPlayerEntity player) {
+        player.changeGameMode(GameMode.SPECTATOR);
         positions.put(player.getUuid(), new Pair<>(player.getPos(), player.world.getRegistryKey()));
         FakePlayerEntity fake = FakePlayerEntity.createFake(player.getEntityName(), player.getServer(), player.getX(), player.getY(), player.getZ(), player.getYaw(), player.getPitch(), player.world.getRegistryKey(), GameMode.SURVIVAL);
         if (fake != null) playerPlaceholders.put(player.getUuid(), fake.getUuid());
-        player.interactionManager.changeGameMode(GameMode.SPECTATOR);
     }
 
     public void toSurvival(ServerPlayerEntity player) {
+        player.changeGameMode(GameMode.SURVIVAL);
         Vec3d pos = positions.get(player.getUuid()).getLeft();
         RegistryKey<World> dimension = positions.get(player.getUuid()).getRight();
         ServerPlayerEntity fake;
@@ -111,7 +109,6 @@ public class PositionData extends PersistentState {
         }
         positions.remove(player.getUuid());
         playerPlaceholders.remove(player.getUuid());
-        player.interactionManager.changeGameMode(GameMode.SURVIVAL);
         if (fake == null) return;
         if (fake.isRemoved()) player.kill();
         fake.kill();

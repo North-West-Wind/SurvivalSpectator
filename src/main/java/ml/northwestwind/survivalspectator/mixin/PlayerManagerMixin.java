@@ -79,6 +79,7 @@ public abstract class PlayerManagerMixin {
 
     /**
      * @author Fabric
+     * @reason Allow fake
      */
     @Overwrite
     public void onPlayerConnect(ClientConnection connection, ServerPlayerEntity player) {

@@ -13,14 +13,12 @@ import net.minecraft.network.packet.s2c.play.EntityPositionS2CPacket;
 import net.minecraft.network.packet.s2c.play.EntitySetHeadYawS2CPacket;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.server.network.ServerPlayerInteractionManager;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.util.registry.RegistryKey;
 import net.minecraft.world.GameMode;
 import net.minecraft.world.World;
 
 import java.util.UUID;
-import java.util.function.Consumer;
 
 // Thank you Carpet
 @SuppressWarnings("EntityConstructor")
@@ -36,7 +34,8 @@ public class FakePlayerEntity extends ServerPlayerEntity
         if (profile == null) return null;
         final GameProfile[] gameprofile = {new GameProfile(UUID.randomUUID(), username)};
         if (profile.getProperties().containsKey("textures")) {
-            gameprofile[0].getProperties().put("textures", (Property) profile.getProperties().get("textures"));
+            for (Property property : profile.getProperties().get("textures"))
+                    gameprofile[0].getProperties().put("textures", property);
             SkullBlockEntity.loadProperties(gameprofile[0], pro -> gameprofile[0] = pro);
         }
         FakePlayerEntity instance = new FakePlayerEntity(server, worldIn, gameprofile[0], false);
@@ -46,11 +45,11 @@ public class FakePlayerEntity extends ServerPlayerEntity
         instance.setHealth(20.0F);
         instance.unsetRemoved();
         instance.stepHeight = 0.6F;
-        instance.interactionManager.changeGameMode(gamemode);
-        server.getPlayerManager().sendToDimension(new EntitySetHeadYawS2CPacket(instance, (byte) (instance.headYaw * 256 / 360)), dimensionId);//instance.dimension);
-        server.getPlayerManager().sendToDimension(new EntityPositionS2CPacket(instance), dimensionId);//instance.dimension);
+        instance.changeGameMode(gamemode);
+        server.getPlayerManager().sendToDimension(new EntitySetHeadYawS2CPacket(instance, (byte) (instance.headYaw * 256 / 360)), dimensionId);
+        server.getPlayerManager().sendToDimension(new EntityPositionS2CPacket(instance), dimensionId);
         instance.getServerWorld().getChunkManager().updatePosition(instance);
-        instance.dataTracker.set(PLAYER_MODEL_PARTS, (byte) 0x7f); // show all model layers (incl. capes)
+        instance.dataTracker.set(PLAYER_MODEL_PARTS, (byte) 0x7f);
         return instance;
     }
 
