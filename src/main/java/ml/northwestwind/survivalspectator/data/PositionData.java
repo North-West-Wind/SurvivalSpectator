@@ -4,10 +4,12 @@ import com.google.common.collect.Maps;
 import ml.northwestwind.survivalspectator.entity.FakePlayerEntity;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.Pair;
+import net.minecraft.util.UserCache;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.util.registry.Registry;
 import net.minecraft.util.registry.RegistryKey;
@@ -90,7 +92,7 @@ public class PositionData extends PersistentState {
     public void toSpectator(ServerPlayerEntity player) {
         player.setGameMode(GameMode.SPECTATOR);
         positions.put(player.getUuid(), new Pair<>(player.getPos(), player.world.getRegistryKey()));
-        FakePlayerEntity fake = FakePlayerEntity.createFake(player.getEntityName(), player.getServer(), player.getX(), player.getY(), player.getZ(), player.yaw, player.pitch, player.world.getRegistryKey(), GameMode.SURVIVAL);
+        FakePlayerEntity fake = FakePlayerEntity.createFake(player.getEntityName(), player.getServer(), player.getX(), player.getY(), player.getZ(), player.yaw, player.pitch, player.world.getRegistryKey(), GameMode.SURVIVAL, null);
         if (fake != null) playerPlaceholders.put(player.getUuid(), fake.getUuid());
     }
 
@@ -122,6 +124,18 @@ public class PositionData extends PersistentState {
     @Nullable
     public UUID getPlayerByFake(UUID uuid) {
         return playerPlaceholders.entrySet().stream().filter(entry -> entry.getValue().equals(uuid)).findFirst().orElseGet(() -> new NullEntry<>(uuid)).getKey();
+    }
+
+    public void reAddFake(MinecraftServer server) {
+        for (Map.Entry<UUID, UUID> entry : playerPlaceholders.entrySet()) {
+            if (!positions.containsKey(entry.getKey())) continue;
+            UserCache.setUseRemote(false);
+            String username = server.getUserCache().getByUuid(entry.getKey()).getName();
+            UserCache.setUseRemote(server.isDedicated() && server.isOnlineMode());
+            Vec3d pos = positions.get(entry.getKey()).getLeft();
+            RegistryKey<World> dimension = positions.get(entry.getKey()).getRight();
+            FakePlayerEntity.createFake(username, server, pos.x, pos.y, pos.z, 0, 0, dimension, GameMode.SURVIVAL, entry.getValue());
+        }
     }
 
     private static class NullEntry<K, V> implements Map.Entry<K, V> {

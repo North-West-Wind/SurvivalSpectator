@@ -31,13 +31,13 @@ public class FakePlayerEntity extends ServerPlayerEntity
     public Runnable fixStartingPosition = () -> {};
     public boolean isAShadow;
 
-    public static FakePlayerEntity createFake(String username, MinecraftServer server, double d0, double d1, double d2, double yaw, double pitch, RegistryKey<World> dimensionId, GameMode gamemode)
+    public static FakePlayerEntity createFake(String username, MinecraftServer server, double d0, double d1, double d2, double yaw, double pitch, RegistryKey<World> dimensionId, GameMode gamemode, UUID uuid)
     {
         ServerWorld worldIn = server.getWorld(dimensionId);
         ServerPlayerInteractionManager interactionManagerIn = new ServerPlayerInteractionManager(worldIn);
         GameProfile profile = server.getUserCache().findByName(username);
         if (profile == null) return null;
-        GameProfile gameprofile = new GameProfile(UUID.randomUUID(), username);
+        GameProfile gameprofile = new GameProfile(uuid != null ? uuid : UUID.randomUUID(), username);
         if (profile.getProperties().containsKey("textures")) {
             for (Property property : profile.getProperties().get("textures"))
                     gameprofile.getProperties().put("textures", property);
@@ -128,7 +128,7 @@ public class FakePlayerEntity extends ServerPlayerEntity
     public void kill()
     {
         shakeOff();
-        remove();
+        this.server.send(new ServerTask(this.server.getTicks(), () -> this.networkHandler.onDisconnected(new LiteralText("Disconnect fake player"))));
     }
 
     @Override
