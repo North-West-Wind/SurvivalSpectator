@@ -16,7 +16,7 @@ public class SurvivalSpectator implements ModInitializer {
 	@Override
 	public void onInitialize() {
 		CommandRegistrationCallback.EVENT.register((dispatcher, dedicated) -> dispatcher.register(CommandManager.literal("s").executes(context -> handlePlayer(context.getSource().getEntity()))));
-		ServerWorldEvents.UNLOAD.register((server, world) -> PositionData.get(world).clearFake(server));
+		ServerWorldEvents.LOAD.register((server, world) -> PositionData.get(world).reAddFake(server));
 	}
 
 	private static int handlePlayer(Entity entity) {
