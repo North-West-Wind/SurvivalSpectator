@@ -12,11 +12,14 @@ import net.minecraft.network.NetworkSide;
 import net.minecraft.network.packet.s2c.play.EntityPositionS2CPacket;
 import net.minecraft.network.packet.s2c.play.EntitySetHeadYawS2CPacket;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.ServerTask;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
+import net.minecraft.text.LiteralText;
 import net.minecraft.util.registry.RegistryKey;
 import net.minecraft.world.GameMode;
 import net.minecraft.world.World;
+import org.apache.logging.log4j.LogManager;
 
 import java.util.UUID;
 
@@ -126,7 +129,9 @@ public class FakePlayerEntity extends ServerPlayerEntity
     public void kill()
     {
         shakeOff();
-        remove(RemovalReason.DISCARDED);
+        this.server.send(new ServerTask(this.server.getTicks(), () -> {
+            this.networkHandler.onDisconnected(new LiteralText("Killed"));
+        }));
     }
 
     @Override

@@ -2,8 +2,10 @@ package ml.northwestwind.survivalspectator.data;
 
 import com.google.common.collect.Maps;
 import ml.northwestwind.survivalspectator.entity.FakePlayerEntity;
+import net.minecraft.entity.Entity;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.nbt.NbtList;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.util.Identifier;
@@ -14,6 +16,7 @@ import net.minecraft.util.registry.RegistryKey;
 import net.minecraft.world.GameMode;
 import net.minecraft.world.PersistentState;
 import net.minecraft.world.World;
+import org.apache.logging.log4j.LogManager;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Map;
@@ -22,10 +25,8 @@ import java.util.UUID;
 public class PositionData extends PersistentState {
     private final Map<UUID, Pair<Vec3d, RegistryKey<World>>> positions = Maps.newHashMap();
     private final Map<UUID, UUID> playerPlaceholders = Maps.newHashMap();
+    private final Map<UUID, RegistryKey<World>> fakeWorlds = Maps.newHashMap();
     public static final String NAME = "survivalspectator";
-
-    public PositionData() {
-    }
 
     public static PositionData get(ServerWorld world) {
         return world.getServer().getOverworld().getPersistentStateManager().getOrCreate(nbtCompound -> new PositionData().read(nbtCompound), PositionData::new, NAME);
@@ -49,6 +50,16 @@ public class PositionData extends PersistentState {
             while (!list.getCompound(i).isEmpty()) {
                 NbtCompound compound = list.getCompound(i);
                 playerPlaceholders.put(compound.getUuid("uuid"), compound.getUuid("fake"));
+                i++;
+            }
+        }
+        list = (NbtList) tag.get("fakeWorlds");
+        if (list != null) {
+            int i = 0;
+            while (!list.getCompound(i).isEmpty()) {
+                NbtCompound compound = list.getCompound(i);
+                RegistryKey<World> dimension = RegistryKey.of(Registry.WORLD_KEY, new Identifier(compound.getString("dimension")));
+                fakeWorlds.put(compound.getUuid("uuid"), dimension);
                 i++;
             }
         }
@@ -79,6 +90,15 @@ public class PositionData extends PersistentState {
             fakes.add(i++, compound);
         }
         tag.put("fakes", fakes);
+        NbtList fakeWorld = new NbtList();
+        i = 0;
+        for (Map.Entry<UUID, RegistryKey<World>> entry : fakeWorlds.entrySet()) {
+            NbtCompound compound = new NbtCompound();
+            compound.putUuid("uuid", entry.getKey());
+            compound.putString("dimension", entry.getValue().getValue().toString());
+            fakeWorld.add(i++, compound);
+        }
+        tag.put("fakeWorlds", fakeWorld);
         return tag;
     }
 
@@ -89,11 +109,25 @@ public class PositionData extends PersistentState {
     public void toSpectator(ServerPlayerEntity player) {
         player.changeGameMode(GameMode.SPECTATOR);
         positions.put(player.getUuid(), new Pair<>(player.getPos(), player.world.getRegistryKey()));
-        FakePlayerEntity fake = FakePlayerEntity.createFake(player.getEntityName(), player.getServer(), player.getX(), player.getY(), player.getZ(), player.getYaw(), player.getPitch(), player.world.getRegistryKey(), GameMode.SURVIVAL);
-        if (fake != null) playerPlaceholders.put(player.getUuid(), fake.getUuid());
+        FakePlayerEntity fake;
+        if (playerPlaceholders.containsKey(player.getUuid())) {
+            fake = (FakePlayerEntity) player.getServer().getWorld(fakeWorlds.get(playerPlaceholders.get(player.getUuid()))).getEntity(playerPlaceholders.get(player.getUuid()));
+            if (fake == null)
+                fake = FakePlayerEntity.createFake(player.getEntityName(), player.getServer(), player.getX(), player.getY(), player.getZ(), player.getYaw(), player.getPitch(), player.world.getRegistryKey(), GameMode.SURVIVAL);
+            else {
+                LogManager.getLogger().info("Found old fake player");
+                fake.teleport(player.getX(), player.getY(), player.getZ());
+            }
+        } else
+            fake = FakePlayerEntity.createFake(player.getEntityName(), player.getServer(), player.getX(), player.getY(), player.getZ(), player.getYaw(), player.getPitch(), player.world.getRegistryKey(), GameMode.SURVIVAL);
+        if (fake != null) {
+            playerPlaceholders.put(player.getUuid(), fake.getUuid());
+            fakeWorlds.put(fake.getUuid(), player.world.getRegistryKey());
+        }
     }
 
     public void toSurvival(ServerPlayerEntity player) {
+        player.fallDistance = 0;
         player.changeGameMode(GameMode.SURVIVAL);
         Vec3d pos = positions.get(player.getUuid()).getLeft();
         RegistryKey<World> dimension = positions.get(player.getUuid()).getRight();
@@ -108,7 +142,6 @@ public class PositionData extends PersistentState {
             player.teleport(pos.x, pos.y, pos.z);
         }
         positions.remove(player.getUuid());
-        playerPlaceholders.remove(player.getUuid());
         if (fake == null) return;
         if (fake.isRemoved()) player.kill();
         fake.kill();
@@ -121,6 +154,17 @@ public class PositionData extends PersistentState {
     @Nullable
     public UUID getPlayerByFake(UUID uuid) {
         return playerPlaceholders.entrySet().stream().filter(entry -> entry.getValue().equals(uuid)).findFirst().orElseGet(() -> new NullEntry<>(uuid)).getKey();
+    }
+
+    public void clearFake(MinecraftServer server) {
+        for (Map.Entry<UUID, UUID> entry : playerPlaceholders.entrySet()) {
+            ServerWorld world = server.getWorld(fakeWorlds.get(entry.getValue()));
+            Entity fake = world.getEntity(entry.getValue());
+            if (fake == null || positions.containsKey(entry.getKey())) continue;
+            fake.remove(Entity.RemovalReason.DISCARDED);
+            playerPlaceholders.remove(entry.getKey());
+            fakeWorlds.remove(entry.getValue());
+        }
     }
 
     private static class NullEntry<K, V> implements Map.Entry<K, V> {
