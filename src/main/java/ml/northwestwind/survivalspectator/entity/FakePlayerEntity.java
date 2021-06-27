@@ -130,6 +130,7 @@ public class FakePlayerEntity extends ServerPlayerEntity
     {
         shakeOff();
         this.server.send(new ServerTask(this.server.getTicks(), () -> this.networkHandler.onDisconnected(new LiteralText("Disconnect fake player"))));
+        remove(RemovalReason.DISCARDED);
     }
 
     @Override
